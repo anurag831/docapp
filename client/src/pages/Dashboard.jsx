@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { docs } from '../api';
+import { useTheme } from '../context/ThemeContext';
 import UploadButton from '../components/UploadButton';
 
 export default function Dashboard() {
@@ -11,6 +12,7 @@ export default function Dashboard() {
   const [renamingId, setRenamingId] = useState(null);
   const [renameTitle, setRenameTitle] = useState('');
 
+  const { theme, toggleTheme } = useTheme();
   const userName = localStorage.getItem('userName') || 'User';
   const userId = localStorage.getItem('userId');
 
@@ -115,6 +117,14 @@ export default function Dashboard() {
           <span className="user-greeting">
             Signed in as <strong>{userName}</strong>
           </span>
+          <button
+            id="btn-theme-toggle"
+            className="btn btn-outline"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+          </button>
           <button id="btn-logout" className="btn btn-outline" onClick={handleLogout}>
             Logout
           </button>

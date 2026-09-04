@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="docGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4" />
+      <stop offset="100%" stop-color="#1967D2" />
+    </linearGradient>
+    <linearGradient id="foldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8AB4F8" />
+      <stop offset="100%" stop-color="#4285F4" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#1a73e8" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Document Body with Folded Top-Right Corner -->
+  <path d="M 14 6 C 11.8 6 10 7.8 10 10 L 10 54 C 10 56.2 11.8 58 14 58 L 50 58 C 52.2 58 54 56.2 54 54 L 54 22 L 38 6 Z" fill="url(#docGrad)" filter="url(#shadow)" />
+
+  <!-- Folded Corner -->
+  <path d="M 38 6 L 38 18 C 38 20.2 39.8 22 42 22 L 54 22 Z" fill="url(#foldGrad)" />
+
+  <!-- White Document Lines (Representing text) -->
+  <rect x="18" y="27" width="22" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.95" />
+  <rect x="18" y="35" width="28" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.95" />
+  <rect x="18" y="43" width="18" height="4" rx="2" fill="#FFFFFF" fill-opacity="0.95" />
+</svg>

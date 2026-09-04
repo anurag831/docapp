@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../api';
+import { useTheme } from '../context/ThemeContext';
 
 const USERS = [
   { name: 'Alice', email: 'alice@demo.com' },
@@ -10,6 +11,7 @@ const USERS = [
 
 export default function Login() {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -36,6 +38,17 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      <div className="login-theme-toggle-wrap">
+        <button
+          id="btn-login-theme"
+          type="button"
+          className="btn btn-outline btn-sm"
+          onClick={toggleTheme}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+        </button>
+      </div>
       <div className="login-card">
         <div className="login-header">
           <div className="app-logo">📄 DocApp</div>

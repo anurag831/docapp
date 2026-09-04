@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { docs, versions } from '../api';
+import { useTheme } from '../context/ThemeContext';
 import TipTapEditor from '../components/TipTapEditor';
 import ShareModal from '../components/ShareModal';
 import CommentsSidebar from '../components/CommentsSidebar';
@@ -12,6 +13,7 @@ import { usePresence } from '../hooks/usePresence';
 export default function Editor() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const [doc, setDoc] = useState(null);
   const [title, setTitle] = useState('');
@@ -427,6 +429,16 @@ export default function Editor() {
               Share
             </button>
           )}
+
+          {/* Theme Toggle Button */}
+          <button
+            id="btn-theme-toggle"
+            className="btn btn-outline"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
         </div>
       </header>
 
