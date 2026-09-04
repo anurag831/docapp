@@ -2,6 +2,9 @@
 
 DocApp is a modern, responsive collaborative rich-text document platform inspired by Google Docs. It features real-time presence indicators, granular role-based sharing permissions, anchored comments, document version history with non-destructive restore, file ingestion, PDF/Markdown export, and a high-contrast dark mode.
 
+- **Live Application**: [https://docapp-production-cba0.up.railway.app/](https://docapp-production-cba0.up.railway.app/)
+- **Video Walkthrough Demo**: [https://youtu.be/P_z_ix0IZn0](https://youtu.be/P_z_ix0IZn0)
+
 ---
 
 ## Features

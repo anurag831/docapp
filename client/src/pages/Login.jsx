@@ -70,7 +70,7 @@ export default function Login() {
 
           <div className="video-iframe-container">
             <iframe
-              src="https://www.youtube.com/embed/iJoyTu2dwDE"
+              src="https://www.youtube.com/embed/P_z_ix0IZn0"
               title="DocApp Project Video Walkthrough"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -86,7 +86,7 @@ export default function Login() {
               <span className="feature-pill">🔒 RBAC</span>
             </div>
             <a
-              href="https://youtu.be/iJoyTu2dwDE"
+              href="https://youtu.be/P_z_ix0IZn0"
               target="_blank"
               rel="noopener noreferrer"
               className="video-watch-link"

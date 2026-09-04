@@ -8,7 +8,7 @@
 - **`AI_WORKFLOW.md`**: Detailed AI collaboration methodology, phased engineering lifecycle, debugging patterns, and quality assurance report.
 - **`tests/documents.test.js`**: Automated integration test suite (11/11 tests passing).
 - **Live Deployment URL**: `https://docapp-production-cba0.up.railway.app/`
-- **Video Walkthrough URL**: `https://youtu.be/iJoyTu2dwDE`
+- **Video Walkthrough URL**: `https://youtu.be/P_z_ix0IZn0`
 
 ---
 

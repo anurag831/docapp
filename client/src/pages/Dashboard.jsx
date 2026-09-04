@@ -153,7 +153,7 @@ export default function Dashboard() {
             </div>
             <div className="video-banner-actions">
               <a
-                href="https://youtu.be/iJoyTu2dwDE"
+                href="https://youtu.be/P_z_ix0IZn0"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-video-banner-cta"
@@ -184,7 +184,7 @@ export default function Dashboard() {
             <UploadButton onUploadSuccess={(newDoc) => navigate(`/editor/${newDoc.id}`)} />
           </div>
           <a
-            href="https://youtu.be/iJoyTu2dwDE"
+            href="https://youtu.be/P_z_ix0IZn0"
             target="_blank"
             rel="noopener noreferrer"
             className="btn-video-hero-pill"
