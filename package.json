@@ -1,0 +1,24 @@
+{
+  "name": "docapp",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "node server/index.js",
+    "dev:client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build": "cd client && npm run build",
+    "start": "NODE_ENV=production node server/index.js",
+    "test": "jest --testEnvironment=node"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "multer": "^2.3.0"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "jest": "^30.5.1",
+    "supertest": "^7.2.2"
+  }
+}
