@@ -23,12 +23,20 @@ export const docs = {
   create: (data) => api.post('/documents', data),
   update: (id, data) => api.put(`/documents/${id}`, data),
   delete: (id) => api.delete(`/documents/${id}`),
-  share: (id, email) => api.post(`/documents/${id}/share`, { shareWithEmail: email }),
+  share: (id, email, role = 'editor') => api.post(`/documents/${id}/share`, { shareWithEmail: email, role }),
+  revokeShare: (id, targetUserId) => api.delete(`/documents/${id}/share/${targetUserId}`),
   upload: (formData) => api.post('/documents/upload', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
   })
+};
+
+export const comments = {
+  getAll: (docId) => api.get(`/documents/${docId}/comments`),
+  create: (docId, data) => api.post(`/documents/${docId}/comments`, data),
+  updateStatus: (docId, commentId, status) => api.patch(`/documents/${docId}/comments/${commentId}`, { status }),
+  delete: (docId, commentId) => api.delete(`/documents/${docId}/comments/${commentId}`)
 };
 
 export default api;

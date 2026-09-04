@@ -93,6 +93,14 @@ export default function Dashboard() {
   const ownedDocs = documents.filter((d) => d.relation === 'owned');
   const sharedDocs = documents.filter((d) => d.relation === 'shared');
 
+  const getRoleBadge = (doc) => {
+    const role = doc.role || (doc.relation === 'owned' ? 'owner' : 'editor');
+    if (role === 'owner') return <span className="badge badge-owner">Owner</span>;
+    if (role === 'editor') return <span className="badge badge-editor">Editor</span>;
+    if (role === 'commenter') return <span className="badge badge-commenter">Commenter</span>;
+    return <span className="badge badge-viewer">Viewer</span>;
+  };
+
   return (
     <div className="dashboard-container">
       {/* Header */}
@@ -142,7 +150,7 @@ export default function Dashboard() {
                       onClick={() => navigate(`/editor/${doc.id}`)}
                     >
                       <div className="doc-card-header">
-                        <span className="badge badge-owned">Owner</span>
+                        {getRoleBadge(doc)}
                         <div className="doc-card-actions">
                           <button
                             type="button"
@@ -206,7 +214,7 @@ export default function Dashboard() {
                       onClick={() => navigate(`/editor/${doc.id}`)}
                     >
                       <div className="doc-card-header">
-                        <span className="badge badge-shared">Shared</span>
+                        {getRoleBadge(doc)}
                       </div>
 
                       <div className="doc-card-body">

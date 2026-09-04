@@ -27,9 +27,27 @@ function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
       shared_with INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL DEFAULT 'editor',
       UNIQUE(document_id, shared_with)
     );
+
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      selected_text TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
+
+  // Migrate existing shares table if role column doesn't exist
+  const sharesInfo = db.prepare("PRAGMA table_info(shares)").all();
+  const hasRoleColumn = sharesInfo.some(col => col.name === 'role');
+  if (!hasRoleColumn) {
+    db.exec("ALTER TABLE shares ADD COLUMN role TEXT DEFAULT 'editor';");
+  }
 
   const insertUser = db.prepare(`
     INSERT OR IGNORE INTO users (id, name, email) VALUES (?, ?, ?)

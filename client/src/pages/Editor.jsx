@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { docs } from '../api';
 import TipTapEditor from '../components/TipTapEditor';
 import ShareModal from '../components/ShareModal';
+import CommentsSidebar from '../components/CommentsSidebar';
 
 export default function Editor() {
   const { id } = useParams();
@@ -16,6 +17,9 @@ export default function Editor() {
   const [saveStatus, setSaveStatus] = useState('');
   const [error, setError] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [openCommentsCount, setOpenCommentsCount] = useState(0);
+  const [selectedText, setSelectedText] = useState('');
 
   const debounceTimerRef = useRef(null);
   const contentRef = useRef('');
@@ -53,9 +57,13 @@ export default function Editor() {
     };
   }, [fetchDocument]);
 
-  // Silent auto-save content
+  const userRole = doc?.role || (doc?.relation === 'owned' ? 'owner' : 'editor');
+  const isEditable = userRole === 'owner' || userRole === 'editor';
+
+  // Silent auto-save content (only for owner/editor)
   const autoSaveContent = useCallback(
     async (newContent) => {
+      if (!isEditable) return;
       try {
         setSaveStatus('Saving...');
         await docs.update(id, { content: newContent });
@@ -64,11 +72,12 @@ export default function Editor() {
         setSaveStatus('Auto-save failed');
       }
     },
-    [id]
+    [id, isEditable]
   );
 
   // Content change handler from TipTap
   const handleContentChange = (newContentJson) => {
+    if (!isEditable) return;
     setContent(newContentJson);
     contentRef.current = newContentJson;
 
@@ -84,13 +93,14 @@ export default function Editor() {
 
   // Manual save button
   const handleManualSave = async () => {
+    if (!isEditable) return;
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     try {
       setSaveStatus('Saving...');
       const payload = { content: contentRef.current };
-      if (doc?.relation === 'owned') {
+      if (userRole === 'owner') {
         payload.title = title;
       }
       const res = await docs.update(id, payload);
@@ -120,10 +130,22 @@ export default function Editor() {
   };
 
   const handleShareSuccess = (sharedUser) => {
-    setDoc((prev) => ({
-      ...prev,
-      shares: [...(prev.shares || []), sharedUser],
-    }));
+    setDoc((prev) => {
+      const existing = prev.shares || [];
+      const filtered = existing.filter((u) => u.id !== sharedUser.id);
+      return {
+        ...prev,
+        shares: [...filtered, sharedUser],
+      };
+    });
+  };
+
+  const handleTextSelection = (text) => {
+    setSelectedText(text);
+    // If text is selected and user is commenter, hint to open comments
+    if (text && userRole === 'commenter' && !showComments) {
+      setShowComments(true);
+    }
   };
 
   if (loading) {
@@ -150,54 +172,83 @@ export default function Editor() {
             ← Back to Dashboard
           </Link>
 
-          <div className="editor-title-container">
-            {doc?.relation === 'owned' ? (
-              isEditingTitle ? (
-                <input
-                  type="text"
-                  className="editor-title-input"
-                  value={title}
-                  autoFocus
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={handleTitleBlur}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleTitleBlur();
-                    if (e.key === 'Escape') {
-                      setTitle(doc.title);
-                      setIsEditingTitle(false);
-                    }
-                  }}
-                />
+          <div className="editor-title-row">
+            <div className="editor-title-container">
+              {userRole === 'owner' ? (
+                isEditingTitle ? (
+                  <input
+                    type="text"
+                    className="editor-title-input"
+                    value={title}
+                    autoFocus
+                    onChange={(e) => setTitle(e.target.value)}
+                    onBlur={handleTitleBlur}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleTitleBlur();
+                      if (e.key === 'Escape') {
+                        setTitle(doc.title);
+                        setIsEditingTitle(false);
+                      }
+                    }}
+                  />
+                ) : (
+                  <h1
+                    className="editor-title-display editable"
+                    onClick={() => setIsEditingTitle(true)}
+                    title="Click to rename"
+                  >
+                    {title || 'Untitled'}
+                  </h1>
+                )
               ) : (
-                <h1
-                  className="editor-title-display editable"
-                  onClick={() => setIsEditingTitle(true)}
-                  title="Click to rename"
-                >
-                  {title || 'Untitled'}
-                </h1>
-              )
-            ) : (
-              <div className="shared-title-wrap">
                 <h1 className="editor-title-display">{title}</h1>
-                <span className="shared-note">
-                  You can edit content but not rename (shared document)
-                </span>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Role Badge */}
+            <span className={`badge badge-${userRole}`}>
+              {userRole === 'owner'
+                ? 'Owner'
+                : userRole === 'editor'
+                ? 'Editor'
+                : userRole === 'commenter'
+                ? 'Commenter'
+                : 'Viewer'}
+            </span>
           </div>
+
+          {/* Role Status Note */}
+          {userRole === 'editor' && (
+            <span className="shared-note">
+              You can edit content but not rename (shared document)
+            </span>
+          )}
         </div>
 
         <div className="editor-header-right">
-          <span className="save-status-indicator" id="save-status">
-            {saveStatus}
-          </span>
+          {isEditable && (
+            <>
+              <span className="save-status-indicator" id="save-status">
+                {saveStatus}
+              </span>
+              <button id="btn-save" className="btn btn-primary" onClick={handleManualSave}>
+                Save
+              </button>
+            </>
+          )}
 
-          <button id="btn-save" className="btn btn-primary" onClick={handleManualSave}>
-            Save
+          {/* Comments Sidebar Toggle Button */}
+          <button
+            id="btn-toggle-comments"
+            className={`btn ${showComments ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => setShowComments((prev) => !prev)}
+            title="Toggle comments & suggestions"
+          >
+            💬 Comments {openCommentsCount > 0 && <span className="comment-counter">{openCommentsCount}</span>}
           </button>
 
-          {doc?.relation === 'owned' && (
+          {/* Share Button (Owner Only) */}
+          {userRole === 'owner' && (
             <button
               id="btn-share"
               className="btn btn-outline"
@@ -209,14 +260,48 @@ export default function Editor() {
         </div>
       </header>
 
-      {/* Editor Body */}
-      <main className="editor-body">
-        <TipTapEditor
-          content={content}
-          onChange={handleContentChange}
-          editable={true}
-        />
-      </main>
+      {/* Mode Banner */}
+      {userRole === 'commenter' && (
+        <div className="mode-banner mode-banner-commenter">
+          <span className="mode-icon">💡</span>
+          <div>
+            <strong>Suggestion & Commenting Mode:</strong> Document content is read-only.
+            Highlight text and use the Comments sidebar to submit suggestions.
+          </div>
+        </div>
+      )}
+
+      {userRole === 'viewer' && (
+        <div className="mode-banner mode-banner-viewer">
+          <span className="mode-icon">👁️</span>
+          <div>
+            <strong>Viewing Mode:</strong> You have read-only access to view this document.
+          </div>
+        </div>
+      )}
+
+      {/* Main Editor Layout */}
+      <div className="editor-layout-wrap">
+        <main className={`editor-main-area ${showComments ? 'with-sidebar' : ''}`}>
+          <TipTapEditor
+            content={content}
+            onChange={handleContentChange}
+            editable={isEditable}
+            onSelectionChange={handleTextSelection}
+          />
+        </main>
+
+        {/* Comments Sidebar */}
+        {showComments && (
+          <CommentsSidebar
+            docId={doc?.id}
+            userRole={userRole}
+            selectedText={selectedText}
+            onClose={() => setShowComments(false)}
+            onCommentCountChange={setOpenCommentsCount}
+          />
+        )}
+      </div>
 
       {/* Share Modal */}
       {showShareModal && (
