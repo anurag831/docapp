@@ -14,6 +14,35 @@ function parseInitialContent(raw) {
   }
 }
 
+function isContentEmpty(raw) {
+  if (!raw) return true;
+  if (typeof raw === 'string' && raw.trim() === '') return true;
+
+  let obj = raw;
+  if (typeof raw === 'string') {
+    try {
+      obj = JSON.parse(raw);
+    } catch {
+      return raw.trim() === '';
+    }
+  }
+
+  if (typeof obj === 'object' && obj !== null) {
+    if (obj.type === 'doc') {
+      if (!obj.content || obj.content.length === 0) return true;
+      if (
+        obj.content.length === 1 &&
+        obj.content[0].type === 'paragraph' &&
+        (!obj.content[0].content || obj.content[0].content.length === 0)
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export default function TipTapEditor({
   content,
   onChange,
@@ -49,14 +78,23 @@ export default function TipTapEditor({
     }
   }, [editable, editor]);
 
-  // Keep editor content in sync when loaded/changed externally
+  // Keep editor content in sync when loaded/changed externally (including previewing empty versions)
   useEffect(() => {
     if (!editor) return;
+
+    const targetEmpty = isContentEmpty(content);
+    if (targetEmpty) {
+      if (!editor.isEmpty) {
+        editor.commands.setContent('', false);
+      }
+      return;
+    }
+
     const currentJson = JSON.stringify(editor.getJSON());
     const parsed = parseInitialContent(content);
     const parsedJson = typeof parsed === 'object' ? JSON.stringify(parsed) : parsed;
 
-    if (parsedJson && parsedJson !== currentJson) {
+    if (parsedJson !== currentJson) {
       editor.commands.setContent(parsed, false);
     }
   }, [content, editor]);
