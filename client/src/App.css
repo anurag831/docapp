@@ -260,6 +260,142 @@ body {
   display: block;
 }
 
+/* Real-Time Presence & Collaborators Bar */
+.presence-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.presence-avatars {
+  display: flex;
+  align-items: center;
+  gap: -6px;
+}
+
+.presence-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  margin-left: -6px;
+  transition: transform 0.15s ease, z-index 0.15s ease;
+}
+
+.presence-avatar-wrap:first-child {
+  margin-left: 0;
+}
+
+.presence-avatar-wrap:hover {
+  transform: translateY(-2px) scale(1.08);
+  z-index: 10;
+}
+
+.presence-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 3px rgba(60, 64, 67, 0.2);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.presence-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid #ffffff;
+}
+
+.presence-status-dot.active {
+  background-color: #34a853;
+}
+
+.presence-status-dot.typing {
+  background-color: #1a73e8;
+  animation: pulse-dot 1.2s infinite;
+}
+
+@keyframes pulse-dot {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.7);
+  }
+  70% {
+    transform: scale(1.2);
+    box-shadow: 0 0 0 4px rgba(26, 115, 232, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(26, 115, 232, 0);
+  }
+}
+
+.presence-typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #1a73e8;
+  font-weight: 500;
+  background-color: #e8f0fe;
+  padding: 4px 8px;
+  border-radius: 12px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.typing-dots {
+  font-size: 13px;
+}
+
+/* Remote Save Notification Banner */
+.remote-update-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: #e8f0fe;
+  border: 1px solid #aecbfa;
+  border-radius: 6px;
+  color: #174ea6;
+  font-size: 13px;
+  margin-bottom: 16px;
+  animation: fadeIn 0.25s ease;
+}
+
+.remote-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.remote-dismiss-btn {
+  background: none;
+  border: none;
+  color: #174ea6;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.remote-dismiss-btn:hover {
+  background-color: #d2e3fc;
+}
+
 /* Login Page */
 .login-container {
   min-height: 100vh;
@@ -1176,7 +1312,9 @@ body {
   .back-link,
   .btn,
   .save-status-indicator,
-  .dropdown-container {
+  .dropdown-container,
+  .presence-container,
+  .remote-update-banner {
     display: none !important;
   }
 

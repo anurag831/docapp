@@ -4,7 +4,9 @@ import { docs } from '../api';
 import TipTapEditor from '../components/TipTapEditor';
 import ShareModal from '../components/ShareModal';
 import CommentsSidebar from '../components/CommentsSidebar';
+import PresenceBar from '../components/PresenceBar';
 import { downloadMarkdown } from '../utils/markdownExporter';
+import { usePresence } from '../hooks/usePresence';
 
 export default function Editor() {
   const { id } = useParams();
@@ -26,6 +28,9 @@ export default function Editor() {
   const debounceTimerRef = useRef(null);
   const contentRef = useRef('');
   const exportDropdownRef = useRef(null);
+
+  const currentUserId = localStorage.getItem('userId');
+  const currentUserName = localStorage.getItem('userName') || 'User';
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -60,6 +65,19 @@ export default function Editor() {
     };
   }, [fetchDocument]);
 
+  const userRole = doc?.role || (doc?.relation === 'owned' ? 'owner' : 'editor');
+  const isEditable = userRole === 'owner' || userRole === 'editor';
+
+  // Real-time Presence Hook
+  const {
+    collaborators,
+    connected,
+    remoteUpdate,
+    notifyTyping,
+    broadcastSaved,
+    clearRemoteUpdate,
+  } = usePresence(id, currentUserId, currentUserName, userRole);
+
   // Close export dropdown on outside click
   useEffect(() => {
     const handleOutsideClick = (e) => {
@@ -71,9 +89,6 @@ export default function Editor() {
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const userRole = doc?.role || (doc?.relation === 'owned' ? 'owner' : 'editor');
-  const isEditable = userRole === 'owner' || userRole === 'editor';
-
   // Silent auto-save content (only for owner/editor)
   const autoSaveContent = useCallback(
     async (newContent) => {
@@ -81,12 +96,13 @@ export default function Editor() {
       try {
         setSaveStatus('Saving...');
         await docs.update(id, { content: newContent });
+        broadcastSaved();
         setSaveStatus(`Auto-saved at ${new Date().toLocaleTimeString()}`);
       } catch (err) {
         setSaveStatus('Auto-save failed');
       }
     },
-    [id, isEditable]
+    [id, isEditable, broadcastSaved]
   );
 
   // Content change handler from TipTap
@@ -94,6 +110,9 @@ export default function Editor() {
     if (!isEditable) return;
     setContent(newContentJson);
     contentRef.current = newContentJson;
+
+    // Trigger typing notification via WebSockets
+    notifyTyping();
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -119,6 +138,7 @@ export default function Editor() {
       }
       const res = await docs.update(id, payload);
       setDoc(res.data);
+      broadcastSaved();
       setSaveStatus(`Saved at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       setSaveStatus('Save failed');
@@ -137,6 +157,7 @@ export default function Editor() {
       const res = await docs.update(id, { title: title.trim() });
       setDoc((prev) => ({ ...prev, title: res.data.title }));
       setTitle(res.data.title);
+      broadcastSaved();
       setSaveStatus(`Saved at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       setError('Failed to update title');
@@ -171,6 +192,11 @@ export default function Editor() {
     window.print();
   };
 
+  const handleApplyRemoteUpdate = async () => {
+    clearRemoteUpdate();
+    await fetchDocument();
+  };
+
   if (loading) {
     return <div className="editor-loading-screen">Loading document...</div>;
   }
@@ -193,6 +219,32 @@ export default function Editor() {
         <h1 className="print-doc-title">{title || 'Untitled'}</h1>
         <div className="print-doc-meta">Document exported from DocApp</div>
       </div>
+
+      {/* Remote update notification banner */}
+      {remoteUpdate && (
+        <div className="remote-update-banner">
+          <span>
+            🔄 <strong>{remoteUpdate.updatedBy}</strong> just saved changes to this document.
+          </span>
+          <div className="remote-update-actions">
+            <button
+              type="button"
+              className="btn btn-sm btn-primary"
+              onClick={handleApplyRemoteUpdate}
+            >
+              Update View
+            </button>
+            <button
+              type="button"
+              className="remote-dismiss-btn"
+              onClick={clearRemoteUpdate}
+              title="Dismiss notice"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Editor Header */}
       <header className="editor-header">
@@ -255,6 +307,13 @@ export default function Editor() {
         </div>
 
         <div className="editor-header-right">
+          {/* Live Collaborators Presence Bar */}
+          <PresenceBar
+            collaborators={collaborators}
+            currentUserId={currentUserId}
+            connected={connected}
+          />
+
           {isEditable && (
             <>
               <span className="save-status-indicator" id="save-status">
