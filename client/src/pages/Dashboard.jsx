@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [renamingId, setRenamingId] = useState(null);
   const [renameTitle, setRenameTitle] = useState('');
+  const [showVideoBanner, setShowVideoBanner] = useState(true);
 
   const { theme, toggleTheme } = useTheme();
   const userName = localStorage.getItem('userName') || 'User';
@@ -133,11 +134,68 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <main className="dashboard-main">
+        {/* Project Video Walkthrough Announcement Banner */}
+        {showVideoBanner && (
+          <div className="dashboard-video-banner">
+            <div className="video-banner-left">
+              <div className="video-banner-icon-badge">
+                <span className="video-banner-play-icon">▶</span>
+              </div>
+              <div className="video-banner-text-col">
+                <div className="video-banner-heading-row">
+                  <span className="video-banner-title">🎬 Project Video Walkthrough & Architecture Demo</span>
+                  <span className="video-banner-pill">5 MIN DEMO</span>
+                </div>
+                <p className="video-banner-subtext">
+                  Watch our recorded demonstration showcasing real-time collaboration, version rollback, and suggestions mode.
+                </p>
+              </div>
+            </div>
+            <div className="video-banner-actions">
+              <a
+                href="https://youtu.be/iJoyTu2dwDE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-video-banner-cta"
+                id="link-banner-youtube"
+                title="Watch video walkthrough on YouTube"
+              >
+                <span>▶ Watch on YouTube</span>
+                <span className="cta-arrow">↗</span>
+              </a>
+              <button
+                type="button"
+                className="btn-banner-dismiss"
+                onClick={() => setShowVideoBanner(false)}
+                title="Dismiss banner"
+                aria-label="Dismiss banner"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="dashboard-actions">
-          <button id="btn-new-doc" className="btn btn-primary" onClick={handleCreateNew}>
-            + New Document
-          </button>
-          <UploadButton onUploadSuccess={(newDoc) => navigate(`/editor/${newDoc.id}`)} />
+          <div className="dashboard-actions-left">
+            <button id="btn-new-doc" className="btn btn-primary" onClick={handleCreateNew}>
+              + New Document
+            </button>
+            <UploadButton onUploadSuccess={(newDoc) => navigate(`/editor/${newDoc.id}`)} />
+          </div>
+          <a
+            href="https://youtu.be/iJoyTu2dwDE"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-video-hero-pill"
+            id="link-dashboard-video"
+            title="Watch full project demo video on YouTube"
+          >
+            <span className="video-hero-pulse-dot"></span>
+            <span className="video-hero-icon">▶</span>
+            <span className="video-hero-text">Watch Video Walkthrough</span>
+            <span className="video-hero-badge">YouTube ↗</span>
+          </a>
         </div>
 
         {error && <div className="error-banner">{error}</div>}

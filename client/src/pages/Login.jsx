@@ -38,7 +38,12 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <div className="login-theme-toggle-wrap">
+      <div className="login-top-bar">
+        <div className="login-top-brand">
+          <span className="app-logo-inline">📄</span>
+          <span className="app-name-inline">DocApp</span>
+          <span className="badge-demo-tag">Project Demo</span>
+        </div>
         <button
           id="btn-login-theme"
           type="button"
@@ -49,32 +54,78 @@ export default function Login() {
           {theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
         </button>
       </div>
-      <div className="login-card">
-        <div className="login-header">
-          <div className="app-logo">📄 DocApp</div>
-          <h1>Google Docs Lite</h1>
-          <p className="login-subtitle">Select a demo user account to get started</p>
-        </div>
 
-        {error && <div className="error-message">{error}</div>}
+      <div className="login-showcase-wrapper">
+        {/* Video Walkthrough Showcase */}
+        <div className="login-video-showcase">
+          <div className="video-showcase-header">
+            <span className="video-live-pill">
+              <span className="video-live-dot"></span> VIDEO WALKTHROUGH
+            </span>
+            <h2 className="video-showcase-title">System Architecture & Live Demo</h2>
+            <p className="video-showcase-desc">
+              Watch our 5-minute technical walkthrough covering real-time collaboration, version snapshot rollback, suggestions mode, and role permissions.
+            </p>
+          </div>
 
-        <div className="demo-user-buttons">
-          {USERS.map((user) => (
-            <button
-              key={user.email}
-              id={`login-${user.name.toLowerCase()}`}
-              className="btn btn-primary btn-block"
-              disabled={loading}
-              onClick={() => handleLogin(user.email)}
+          <div className="video-iframe-container">
+            <iframe
+              src="https://www.youtube.com/embed/iJoyTu2dwDE"
+              title="DocApp Project Video Walkthrough"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowFullScreen
+            ></iframe>
+          </div>
+
+          <div className="video-showcase-footer">
+            <div className="video-tags-list">
+              <span className="feature-pill">⚡ WebSockets</span>
+              <span className="feature-pill">📜 Version History</span>
+              <span className="feature-pill">💬 Suggestions</span>
+              <span className="feature-pill">🔒 RBAC</span>
+            </div>
+            <a
+              href="https://youtu.be/iJoyTu2dwDE"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="video-watch-link"
+              id="link-login-video"
+              title="Watch on YouTube"
             >
-              Login as {user.name}
-            </button>
-          ))}
+              Watch on YouTube ↗
+            </a>
+          </div>
         </div>
 
-        <p className="login-note">
-          Demo accounts — no password needed. Switch accounts to test sharing.
-        </p>
+        {/* Login Card */}
+        <div className="login-card">
+          <div className="login-header">
+            <div className="app-logo">📄 DocApp</div>
+            <h1>Google Docs Lite</h1>
+            <p className="login-subtitle">Select a demo user account to get started</p>
+          </div>
+
+          {error && <div className="error-message">{error}</div>}
+
+          <div className="demo-user-buttons">
+            {USERS.map((user) => (
+              <button
+                key={user.email}
+                id={`login-${user.name.toLowerCase()}`}
+                className="btn btn-primary btn-block"
+                disabled={loading}
+                onClick={() => handleLogin(user.email)}
+              >
+                Login as {user.name}
+              </button>
+            ))}
+          </div>
+
+          <p className="login-note">
+            Demo accounts — no password needed. Switch accounts in different tabs to test live collaboration.
+          </p>
+        </div>
       </div>
     </div>
   );
