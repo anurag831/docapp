@@ -1,7 +1,20 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, '../data.db');
+// Support custom DB_PATH, auto-detect Railway persistent volume at /data, or default to local data.db
+let defaultDbPath = path.resolve(__dirname, '../data.db');
+if (process.platform !== 'win32' && fs.existsSync('/data')) {
+  defaultDbPath = '/data/data.db';
+}
+const dbPath = process.env.DB_PATH || defaultDbPath;
+
+// Ensure target directory exists
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
 const db = new Database(dbPath);
 
 db.pragma('foreign_keys = ON');
