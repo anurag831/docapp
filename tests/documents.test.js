@@ -5,6 +5,7 @@ const db = require('../server/db');
 describe('Documents API', () => {
   beforeEach(() => {
     db.prepare('DELETE FROM comments').run();
+    db.prepare('DELETE FROM document_versions').run();
     db.prepare('DELETE FROM shares').run();
     db.prepare('DELETE FROM documents').run();
     const insertUser = db.prepare('INSERT OR IGNORE INTO users (id, name, email) VALUES (?, ?, ?)');
@@ -226,6 +227,132 @@ describe('Documents API', () => {
         .set('x-user-id', '2');
       expect(deleteRes.status).toBe(200);
       expect(deleteRes.body.success).toBe(true);
+    });
+  });
+
+  // Document Version History API tests
+  describe('Document Version History', () => {
+    test('Document creation automatically creates initial version snapshot (v1)', async () => {
+      const createRes = await request(app)
+        .post('/api/documents')
+        .set('x-user-id', '1')
+        .send({ title: 'Versioned Doc', content: 'Initial Text Content' });
+      expect(createRes.status).toBe(200);
+      const docId = createRes.body.id;
+
+      const versionsRes = await request(app)
+        .get(`/api/documents/${docId}/versions`)
+        .set('x-user-id', '1');
+
+      expect(versionsRes.status).toBe(200);
+      expect(Array.isArray(versionsRes.body)).toBe(true);
+      expect(versionsRes.body.length).toBe(1);
+      expect(versionsRes.body[0].version_number).toBe(1);
+      expect(versionsRes.body[0].label).toBe('Initial document');
+      expect(versionsRes.body[0].author_name).toBe('Alice');
+    });
+
+    test('Manual save records checkpoint and creates new version snapshot', async () => {
+      const createRes = await request(app)
+        .post('/api/documents')
+        .set('x-user-id', '1')
+        .send({ title: 'Versioned Doc', content: 'V1 content' });
+      const docId = createRes.body.id;
+
+      // Manual save by Alice
+      const updateRes = await request(app)
+        .put(`/api/documents/${docId}`)
+        .set('x-user-id', '1')
+        .send({ content: 'V2 content updated manually', isManualSave: true });
+      expect(updateRes.status).toBe(200);
+
+      const versionsRes = await request(app)
+        .get(`/api/documents/${docId}/versions`)
+        .set('x-user-id', '1');
+
+      expect(versionsRes.status).toBe(200);
+      expect(versionsRes.body.length).toBe(2);
+      // Ordered descending by version_number
+      expect(versionsRes.body[0].version_number).toBe(2);
+      expect(versionsRes.body[0].label).toBe('Manual save');
+      expect(versionsRes.body[1].version_number).toBe(1);
+
+      // Fetch snapshot of v1
+      const v1Id = versionsRes.body[1].id;
+      const v1SnapshotRes = await request(app)
+        .get(`/api/documents/${docId}/versions/${v1Id}`)
+        .set('x-user-id', '1');
+
+      expect(v1SnapshotRes.status).toBe(200);
+      expect(v1SnapshotRes.body.content).toBe('V1 content');
+      expect(v1SnapshotRes.body.version_number).toBe(1);
+    });
+
+    test('Restoring past version creates non-destructive backup and rolls back document', async () => {
+      const createRes = await request(app)
+        .post('/api/documents')
+        .set('x-user-id', '1')
+        .send({ title: 'Original Title', content: 'Original content' });
+      const docId = createRes.body.id;
+
+      // Update document to V2
+      await request(app)
+        .put(`/api/documents/${docId}`)
+        .set('x-user-id', '1')
+        .send({ title: 'Changed Title', content: 'Modified content', isManualSave: true });
+
+      // Get V1 snapshot ID
+      const versionsRes = await request(app)
+        .get(`/api/documents/${docId}/versions`)
+        .set('x-user-id', '1');
+      const v1 = versionsRes.body.find((v) => v.version_number === 1);
+
+      // Restore V1
+      const restoreRes = await request(app)
+        .post(`/api/documents/${docId}/versions/${v1.id}/restore`)
+        .set('x-user-id', '1');
+
+      expect(restoreRes.status).toBe(200);
+      expect(restoreRes.body.content).toBe('Original content');
+      expect(restoreRes.body.title).toBe('Original Title');
+
+      // Verify history timeline now contains backup and restored versions
+      const allVersions = await request(app)
+        .get(`/api/documents/${docId}/versions`)
+        .set('x-user-id', '1');
+
+      expect(allVersions.body.length).toBe(4);
+      expect(allVersions.body[0].label).toContain('Restored from Version #1');
+      expect(allVersions.body[1].label).toBe('Backup before restore');
+    });
+
+    test('Permissions: Viewer can view version history but cannot restore', async () => {
+      const createRes = await request(app)
+        .post('/api/documents')
+        .set('x-user-id', '1')
+        .send({ title: 'Doc', content: 'Base' });
+      const docId = createRes.body.id;
+
+      // Share with Carol as viewer
+      await request(app)
+        .post(`/api/documents/${docId}/share`)
+        .set('x-user-id', '1')
+        .send({ shareWithEmail: 'carol@demo.com', role: 'viewer' });
+
+      // Carol views version history
+      const carolViewRes = await request(app)
+        .get(`/api/documents/${docId}/versions`)
+        .set('x-user-id', '3');
+      expect(carolViewRes.status).toBe(200);
+      expect(carolViewRes.body.length).toBe(1);
+
+      const v1Id = carolViewRes.body[0].id;
+
+      // Carol attempts to restore -> 403 Forbidden
+      const carolRestoreRes = await request(app)
+        .post(`/api/documents/${docId}/versions/${v1Id}/restore`)
+        .set('x-user-id', '3');
+      expect(carolRestoreRes.status).toBe(403);
     });
   });
 });

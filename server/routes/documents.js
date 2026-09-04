@@ -63,6 +63,41 @@ function getDocumentWithAccess(docId, userId) {
   return doc;
 }
 
+// Helper to create a version snapshot with throttling
+function createVersionSnapshot(docId, userId, title, content, label = 'Auto-save checkpoint', force = false) {
+  try {
+    const lastVersion = db.prepare(`
+      SELECT version_number, strftime('%s', created_at) AS created_epoch
+      FROM document_versions 
+      WHERE document_id = ? 
+      ORDER BY version_number DESC 
+      LIMIT 1
+    `).get(docId);
+
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    const nextVersionNumber = lastVersion ? lastVersion.version_number + 1 : 1;
+
+    // Throttling: If not a forced snapshot (manual save / restore / creation),
+    // require at least 300 seconds (5 minutes) since last snapshot
+    if (!force && lastVersion) {
+      const elapsedSeconds = currentEpoch - (lastVersion.created_epoch || 0);
+      if (elapsedSeconds < 300) {
+        return null;
+      }
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO document_versions (document_id, title, content, created_by, version_number, label)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+    const result = stmt.run(docId, title, content || '', userId, nextVersionNumber, label);
+    return { id: result.lastInsertRowid, version_number: nextVersionNumber };
+  } catch (err) {
+    console.error('Failed to create version snapshot:', err);
+    return null;
+  }
+}
+
 // POST /api/documents/upload - REGISTERED BEFORE /:id ROUTES
 router.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
@@ -101,8 +136,12 @@ router.post('/upload', upload.single('file'), (req, res) => {
 
   const stmt = db.prepare('INSERT INTO documents (title, content, owner_id) VALUES (?, ?, ?)');
   const result = stmt.run(title, content, req.userId);
+  const docId = result.lastInsertRowid;
 
-  res.json({ id: result.lastInsertRowid, title });
+  // Snapshot initial uploaded state
+  createVersionSnapshot(docId, req.userId, title, content, 'Uploaded file', true);
+
+  res.json({ id: docId, title });
 });
 
 // GET /api/documents - list visible documents with role
@@ -142,9 +181,13 @@ router.post('/', (req, res) => {
 
   const stmt = db.prepare('INSERT INTO documents (title, content, owner_id) VALUES (?, ?, ?)');
   const result = stmt.run(docTitle, docContent, req.userId);
+  const docId = result.lastInsertRowid;
+
+  // Snapshot Version #1
+  createVersionSnapshot(docId, req.userId, docTitle, docContent, 'Initial document', true);
 
   res.json({
-    id: result.lastInsertRowid,
+    id: docId,
     title: docTitle,
     content: docContent
   });
@@ -165,7 +208,7 @@ router.get('/:id', (req, res) => {
   res.json(doc);
 });
 
-// PUT /api/documents/:id - update document with role permissions
+// PUT /api/documents/:id - update document with role permissions & snapshotting
 router.put('/:id', (req, res) => {
   const docId = parseInt(req.params.id, 10);
   if (isNaN(docId)) {
@@ -186,7 +229,7 @@ router.put('/:id', (req, res) => {
     return res.status(403).json({ error: 'Commenters cannot edit document content directly. Use comments to suggest changes' });
   }
 
-  const { title, content } = req.body || {};
+  const { title, content, isManualSave } = req.body || {};
 
   let updatedTitle = existingDoc.title;
   // Only owner can update title
@@ -204,6 +247,17 @@ router.put('/:id', (req, res) => {
     SET title = ?, content = ?, updated_at = datetime('now')
     WHERE id = ?
   `).run(updatedTitle, updatedContent, docId);
+
+  // Snapshot version: manual save is forced, autosave is throttled (5 mins)
+  const isManual = !!isManualSave;
+  createVersionSnapshot(
+    docId,
+    req.userId,
+    updatedTitle,
+    updatedContent,
+    isManual ? 'Manual save' : 'Auto-save checkpoint',
+    isManual
+  );
 
   const updatedDoc = getDocumentWithAccess(docId, req.userId);
   res.json(updatedDoc);
@@ -227,12 +281,13 @@ router.delete('/:id', (req, res) => {
 
   db.prepare('DELETE FROM shares WHERE document_id = ?').run(docId);
   db.prepare('DELETE FROM comments WHERE document_id = ?').run(docId);
+  db.prepare('DELETE FROM document_versions WHERE document_id = ?').run(docId);
   db.prepare('DELETE FROM documents WHERE id = ?').run(docId);
 
   res.json({ success: true });
 });
 
-// POST /api/documents/:id/share - share document with specific role (editor, commenter, viewer)
+// POST /api/documents/:id/share - share document
 router.post('/:id/share', (req, res) => {
   const docId = parseInt(req.params.id, 10);
   if (isNaN(docId)) {
@@ -296,10 +351,138 @@ router.delete('/:id/share/:targetUserId', (req, res) => {
 });
 
 // ==========================================
+// DOCUMENT VERSION HISTORY API
+// ==========================================
+
+// GET /api/documents/:id/versions - retrieve version timeline
+router.get('/:id/versions', (req, res) => {
+  const docId = parseInt(req.params.id, 10);
+  if (isNaN(docId)) {
+    return res.status(404).json({ error: 'Document not found' });
+  }
+
+  const doc = getDocumentWithAccess(docId, req.userId);
+  if (!doc) {
+    return res.status(404).json({ error: 'Document not found or access denied' });
+  }
+
+  const versions = db.prepare(`
+    SELECT 
+      v.id,
+      v.document_id,
+      v.version_number,
+      v.title,
+      v.label,
+      v.created_by,
+      v.created_at,
+      u.name AS author_name,
+      u.email AS author_email
+    FROM document_versions v
+    JOIN users u ON v.created_by = u.id
+    WHERE v.document_id = ?
+    ORDER BY v.version_number DESC
+  `).all(docId);
+
+  res.json(versions);
+});
+
+// GET /api/documents/:id/versions/:versionId - retrieve specific version snapshot with content
+router.get('/:id/versions/:versionId', (req, res) => {
+  const docId = parseInt(req.params.id, 10);
+  const versionId = parseInt(req.params.versionId, 10);
+  if (isNaN(docId) || isNaN(versionId)) {
+    return res.status(404).json({ error: 'Document or version not found' });
+  }
+
+  const doc = getDocumentWithAccess(docId, req.userId);
+  if (!doc) {
+    return res.status(404).json({ error: 'Document not found or access denied' });
+  }
+
+  const version = db.prepare(`
+    SELECT 
+      v.*,
+      u.name AS author_name,
+      u.email AS author_email
+    FROM document_versions v
+    JOIN users u ON v.created_by = u.id
+    WHERE v.id = ? AND v.document_id = ?
+  `).get(versionId, docId);
+
+  if (!version) {
+    return res.status(404).json({ error: 'Version snapshot not found' });
+  }
+
+  res.json(version);
+});
+
+// POST /api/documents/:id/versions/:versionId/restore - restore document to snapshot
+router.post('/:id/versions/:versionId/restore', (req, res) => {
+  const docId = parseInt(req.params.id, 10);
+  const versionId = parseInt(req.params.versionId, 10);
+  if (isNaN(docId) || isNaN(versionId)) {
+    return res.status(404).json({ error: 'Document or version not found' });
+  }
+
+  const doc = getDocumentWithAccess(docId, req.userId);
+  if (!doc) {
+    return res.status(404).json({ error: 'Document not found or access denied' });
+  }
+
+  // Only owner or editor can restore versions
+  if (doc.role !== 'owner' && doc.role !== 'editor') {
+    return res.status(403).json({ error: 'Only document owners and editors can restore previous versions' });
+  }
+
+  const targetVersion = db.prepare(`
+    SELECT * FROM document_versions 
+    WHERE id = ? AND document_id = ?
+  `).get(versionId, docId);
+
+  if (!targetVersion) {
+    return res.status(404).json({ error: 'Target version not found' });
+  }
+
+  // 1. Create a pre-restore backup snapshot of current document state
+  createVersionSnapshot(
+    docId,
+    req.userId,
+    doc.title,
+    doc.content,
+    'Backup before restore',
+    true
+  );
+
+  // 2. Determine restored title: owner restores title too; editor keeps current title
+  const restoredTitle = doc.role === 'owner' ? targetVersion.title : doc.title;
+  const restoredContent = targetVersion.content;
+
+  // 3. Update documents table
+  db.prepare(`
+    UPDATE documents 
+    SET title = ?, content = ?, updated_at = datetime('now')
+    WHERE id = ?
+  `).run(restoredTitle, restoredContent, docId);
+
+  // 4. Create snapshot for the newly restored state
+  createVersionSnapshot(
+    docId,
+    req.userId,
+    restoredTitle,
+    restoredContent,
+    `Restored from Version #${targetVersion.version_number}`,
+    true
+  );
+
+  const updatedDoc = getDocumentWithAccess(docId, req.userId);
+  res.json(updatedDoc);
+});
+
+// ==========================================
 // COMMENTS & SUGGESTIONS API
 // ==========================================
 
-// GET /api/documents/:id/comments - retrieve all comments for document
+// GET /api/documents/:id/comments - retrieve all comments
 router.get('/:id/comments', (req, res) => {
   const docId = parseInt(req.params.id, 10);
   if (isNaN(docId)) {
@@ -377,7 +560,7 @@ router.post('/:id/comments', (req, res) => {
   res.json(newComment);
 });
 
-// PATCH /api/documents/:id/comments/:commentId - toggle status (open/resolved)
+// PATCH /api/documents/:id/comments/:commentId - toggle status
 router.patch('/:id/comments/:commentId', (req, res) => {
   const docId = parseInt(req.params.id, 10);
   const commentId = parseInt(req.params.commentId, 10);

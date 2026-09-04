@@ -1263,6 +1263,245 @@ body {
 }
 
 /* =========================================================
+   VERSION HISTORY DRAWER & PREVIEW BANNER
+   ========================================================= */
+.version-preview-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fef7e0;
+  border: 1px solid #f9ab00;
+  border-left: 4px solid #f9ab00;
+  border-radius: 6px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.version-preview-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.version-preview-tag {
+  background-color: #f9ab00;
+  color: #202124;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.version-preview-desc {
+  font-size: 13px;
+  color: #3c4043;
+}
+
+.version-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-drawer {
+  width: 340px;
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(60, 64, 67, 0.15);
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  position: sticky;
+  top: 16px;
+}
+
+.version-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.version-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-icon {
+  font-size: 18px;
+}
+
+.version-drawer-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #202124;
+  margin: 0;
+}
+
+.version-close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #5f6368;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.version-close-btn:hover {
+  background-color: #f1f3f4;
+}
+
+.version-drawer-subtitle {
+  font-size: 12px;
+  color: #5f6368;
+  margin: 0;
+  padding: 8px 16px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.version-error {
+  padding: 8px 16px;
+  color: #d93025;
+  font-size: 13px;
+  background-color: #fce8e6;
+}
+
+.version-list-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.version-loading,
+.version-empty {
+  text-align: center;
+  color: #5f6368;
+  font-size: 13px;
+  padding: 24px 12px;
+}
+
+.version-card {
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.version-card:hover {
+  border-color: #1a73e8;
+  box-shadow: 0 1px 4px rgba(26, 115, 232, 0.15);
+}
+
+.version-card.selected {
+  border-color: #1a73e8;
+  background-color: #f0f6ff;
+}
+
+.version-card.current-version {
+  border-left: 3px solid #1a73e8;
+}
+
+.version-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.version-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-number-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1a73e8;
+  background: #e8f0fe;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.version-timestamp {
+  font-size: 11px;
+  color: #5f6368;
+}
+
+.version-label-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #202124;
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.version-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.version-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.version-author-name {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+.version-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #1a73e8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  color: #174ea6;
+}
+
+.btn-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-primary-link {
+  color: #137333;
+  font-weight: 600;
+}
+
+.btn-primary-link:hover {
+  color: #0d5a25;
+}
+
+/* =========================================================
    PRINT STYLES FOR HIGH-FIDELITY PDF EXPORT
    ========================================================= */
 @media print {
@@ -1307,6 +1546,8 @@ body {
   .editor-header,
   .editor-toolbar,
   .comments-sidebar,
+  .version-drawer,
+  .version-preview-banner,
   .mode-banner,
   .modal-backdrop,
   .back-link,

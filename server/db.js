@@ -40,6 +40,17 @@ function initDb() {
       status TEXT NOT NULL DEFAULT 'open',
       created_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS document_versions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_by INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      version_number INTEGER NOT NULL,
+      label TEXT DEFAULT 'Auto-save checkpoint',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   // Migrate existing shares table if role column doesn't exist

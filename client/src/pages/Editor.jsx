@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { docs } from '../api';
+import { docs, versions } from '../api';
 import TipTapEditor from '../components/TipTapEditor';
 import ShareModal from '../components/ShareModal';
 import CommentsSidebar from '../components/CommentsSidebar';
 import PresenceBar from '../components/PresenceBar';
+import VersionHistoryDrawer from '../components/VersionHistoryDrawer';
 import { downloadMarkdown } from '../utils/markdownExporter';
 import { usePresence } from '../hooks/usePresence';
 
@@ -21,6 +22,8 @@ export default function Editor() {
   const [error, setError] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [previewVersion, setPreviewVersion] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [openCommentsCount, setOpenCommentsCount] = useState(0);
   const [selectedText, setSelectedText] = useState('');
@@ -107,7 +110,7 @@ export default function Editor() {
 
   // Content change handler from TipTap
   const handleContentChange = (newContentJson) => {
-    if (!isEditable) return;
+    if (!isEditable || previewVersion) return;
     setContent(newContentJson);
     contentRef.current = newContentJson;
 
@@ -124,15 +127,15 @@ export default function Editor() {
     }, 2000);
   };
 
-  // Manual save button
+  // Manual save button (forces immediate version snapshot)
   const handleManualSave = async () => {
-    if (!isEditable) return;
+    if (!isEditable || previewVersion) return;
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     try {
       setSaveStatus('Saving...');
-      const payload = { content: contentRef.current };
+      const payload = { content: contentRef.current, isManualSave: true };
       if (userRole === 'owner') {
         payload.title = title;
       }
@@ -143,6 +146,29 @@ export default function Editor() {
     } catch (err) {
       setSaveStatus('Save failed');
       setError('Failed to save document');
+    }
+  };
+
+  // Restore past version snapshot
+  const handleRestoreVersion = async (versionSnapshot) => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await versions.restore(id, versionSnapshot.id);
+      setDoc(res.data);
+      setTitle(res.data.title);
+      setContent(res.data.content);
+      contentRef.current = res.data.content;
+      setPreviewVersion(null);
+      setShowVersionHistory(false);
+      broadcastSaved();
+      setSaveStatus(
+        `Restored v#${versionSnapshot.version_number} at ${new Date().toLocaleTimeString()}`
+      );
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to restore document version');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -369,10 +395,26 @@ export default function Editor() {
           <button
             id="btn-toggle-comments"
             className={`btn ${showComments ? 'btn-primary' : 'btn-outline'}`}
-            onClick={() => setShowComments((prev) => !prev)}
+            onClick={() => {
+              setShowComments((prev) => !prev);
+              if (!showComments && showVersionHistory) setShowVersionHistory(false);
+            }}
             title="Toggle comments & suggestions"
           >
             💬 Comments {openCommentsCount > 0 && <span className="comment-counter">{openCommentsCount}</span>}
+          </button>
+
+          {/* Version History Drawer Toggle Button */}
+          <button
+            id="btn-version-history"
+            className={`btn ${showVersionHistory ? 'btn-primary' : 'btn-outline'}`}
+            onClick={() => {
+              setShowVersionHistory((prev) => !prev);
+              if (!showVersionHistory && showComments) setShowComments(false);
+            }}
+            title="Document version history"
+          >
+            🕒 History
           </button>
 
           {/* Share Button (Owner Only) */}
@@ -387,6 +429,45 @@ export default function Editor() {
           )}
         </div>
       </header>
+
+      {/* Version Preview Banner */}
+      {previewVersion && (
+        <div className="version-preview-banner">
+          <div className="version-preview-info">
+            <span className="version-preview-tag">Previewing v{previewVersion.version_number}</span>
+            <span className="version-preview-desc">
+              <strong>{previewVersion.label || 'Snapshot'}</strong> • Created{' '}
+              {new Date(previewVersion.created_at).toLocaleString([], {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}{' '}
+              by {previewVersion.author_name} (Read-Only)
+            </span>
+          </div>
+          <div className="version-preview-actions">
+            {isEditable && (
+              <button
+                type="button"
+                id="btn-restore-version"
+                className="btn btn-primary btn-sm"
+                onClick={() => handleRestoreVersion(previewVersion)}
+              >
+                Restore this version
+              </button>
+            )}
+            <button
+              type="button"
+              id="btn-exit-preview"
+              className="btn btn-outline btn-sm"
+              onClick={() => setPreviewVersion(null)}
+            >
+              Exit Preview
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Mode Banner */}
       {userRole === 'commenter' && (
@@ -410,11 +491,11 @@ export default function Editor() {
 
       {/* Main Editor Layout */}
       <div className="editor-layout-wrap">
-        <main className={`editor-main-area ${showComments ? 'with-sidebar' : ''}`}>
+        <main className={`editor-main-area ${showComments || showVersionHistory ? 'with-sidebar' : ''}`}>
           <TipTapEditor
-            content={content}
+            content={previewVersion ? previewVersion.content : content}
             onChange={handleContentChange}
-            editable={isEditable}
+            editable={!previewVersion && isEditable}
             onSelectionChange={handleTextSelection}
           />
         </main>
@@ -427,6 +508,21 @@ export default function Editor() {
             selectedText={selectedText}
             onClose={() => setShowComments(false)}
             onCommentCountChange={setOpenCommentsCount}
+          />
+        )}
+
+        {/* Version History Drawer */}
+        {showVersionHistory && (
+          <VersionHistoryDrawer
+            docId={doc?.id}
+            activePreviewId={previewVersion?.id}
+            onPreviewVersion={(snapshot) => setPreviewVersion(snapshot)}
+            onClose={() => {
+              setShowVersionHistory(false);
+              setPreviewVersion(null);
+            }}
+            onRestore={handleRestoreVersion}
+            canRestore={isEditable}
           />
         )}
       </div>

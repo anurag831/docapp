@@ -39,4 +39,10 @@ export const comments = {
   delete: (docId, commentId) => api.delete(`/documents/${docId}/comments/${commentId}`)
 };
 
+export const versions = {
+  getAll: (docId) => api.get(`/documents/${docId}/versions`),
+  getById: (docId, versionId) => api.get(`/documents/${docId}/versions/${versionId}`),
+  restore: (docId, versionId) => api.post(`/documents/${docId}/versions/${versionId}/restore`)
+};
+
 export default api;
