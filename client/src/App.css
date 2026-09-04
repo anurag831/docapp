@@ -26,6 +26,11 @@ body {
   padding: 0 16px 48px;
 }
 
+/* Print Only Title (Hidden on screen, visible when printing/saving to PDF) */
+.print-title-header {
+  display: none;
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -199,6 +204,60 @@ body {
 .user-greeting {
   font-size: 14px;
   color: #5f6368;
+}
+
+/* Dropdown Menu */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background-color: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(60, 64, 67, 0.15);
+  min-width: 220px;
+  z-index: 100;
+  padding: 6px 0;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.dropdown-item:hover {
+  background-color: #f1f3f4;
+}
+
+.dropdown-item-icon {
+  font-size: 18px;
+}
+
+.dropdown-item-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #202124;
+  display: block;
+}
+
+.dropdown-item-desc {
+  font-size: 11px;
+  color: #5f6368;
+  display: block;
 }
 
 /* Login Page */
@@ -1065,4 +1124,98 @@ body {
   padding: 40px 0;
   color: #5f6368;
   font-size: 15px;
+}
+
+/* =========================================================
+   PRINT STYLES FOR HIGH-FIDELITY PDF EXPORT
+   ========================================================= */
+@media print {
+  @page {
+    margin: 20mm 15mm;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  .editor-page-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Show dedicated print title */
+  .print-title-header {
+    display: block !important;
+    margin-bottom: 24pt;
+    padding-bottom: 12pt;
+    border-bottom: 1pt solid #ccc;
+  }
+
+  .print-doc-title {
+    font-size: 24pt;
+    font-weight: 700;
+    color: #000000;
+    margin-bottom: 4pt;
+  }
+
+  .print-doc-meta {
+    font-size: 9pt;
+    color: #666;
+  }
+
+  /* Hide interactive web UI */
+  .editor-header,
+  .editor-toolbar,
+  .comments-sidebar,
+  .mode-banner,
+  .modal-backdrop,
+  .back-link,
+  .btn,
+  .save-status-indicator,
+  .dropdown-container {
+    display: none !important;
+  }
+
+  .editor-layout-wrap {
+    display: block !important;
+  }
+
+  .editor-main-area {
+    width: 100% !important;
+  }
+
+  .tiptap-wrapper {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .editor-content-container {
+    border: none !important;
+  }
+
+  .tiptap-editor-area {
+    padding: 0 !important;
+    min-height: auto !important;
+  }
+
+  .tiptap-editor-area .ProseMirror {
+    min-height: auto !important;
+  }
+
+  .tiptap-editor-area .ProseMirror h1,
+  .tiptap-editor-area .ProseMirror h2,
+  .tiptap-editor-area .ProseMirror h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  .tiptap-editor-area .ProseMirror blockquote,
+  .tiptap-editor-area .ProseMirror pre {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
 }

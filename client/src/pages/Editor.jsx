@@ -4,6 +4,7 @@ import { docs } from '../api';
 import TipTapEditor from '../components/TipTapEditor';
 import ShareModal from '../components/ShareModal';
 import CommentsSidebar from '../components/CommentsSidebar';
+import { downloadMarkdown } from '../utils/markdownExporter';
 
 export default function Editor() {
   const { id } = useParams();
@@ -18,11 +19,13 @@ export default function Editor() {
   const [error, setError] = useState('');
   const [showShareModal, setShowShareModal] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
   const [openCommentsCount, setOpenCommentsCount] = useState(0);
   const [selectedText, setSelectedText] = useState('');
 
   const debounceTimerRef = useRef(null);
   const contentRef = useRef('');
+  const exportDropdownRef = useRef(null);
 
   const fetchDocument = useCallback(async () => {
     try {
@@ -56,6 +59,17 @@ export default function Editor() {
       }
     };
   }, [fetchDocument]);
+
+  // Close export dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   const userRole = doc?.role || (doc?.relation === 'owned' ? 'owner' : 'editor');
   const isEditable = userRole === 'owner' || userRole === 'editor';
@@ -142,10 +156,19 @@ export default function Editor() {
 
   const handleTextSelection = (text) => {
     setSelectedText(text);
-    // If text is selected and user is commenter, hint to open comments
     if (text && userRole === 'commenter' && !showComments) {
       setShowComments(true);
     }
+  };
+
+  const handleExportMarkdown = () => {
+    setShowExportMenu(false);
+    downloadMarkdown(title, contentRef.current || content);
+  };
+
+  const handleExportPDF = () => {
+    setShowExportMenu(false);
+    window.print();
   };
 
   if (loading) {
@@ -165,6 +188,12 @@ export default function Editor() {
 
   return (
     <div className="editor-page-container">
+      {/* Printable Title (visible only during window.print) */}
+      <div className="print-title-header">
+        <h1 className="print-doc-title">{title || 'Untitled'}</h1>
+        <div className="print-doc-meta">Document exported from DocApp</div>
+      </div>
+
       {/* Editor Header */}
       <header className="editor-header">
         <div className="editor-header-left">
@@ -236,6 +265,46 @@ export default function Editor() {
               </button>
             </>
           )}
+
+          {/* Export Dropdown Menu */}
+          <div className="dropdown-container" ref={exportDropdownRef}>
+            <button
+              id="btn-export"
+              className="btn btn-outline"
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              title="Export document"
+            >
+              ⬇️ Export ▾
+            </button>
+            {showExportMenu && (
+              <div className="dropdown-menu">
+                <button
+                  type="button"
+                  className="dropdown-item"
+                  id="btn-export-md"
+                  onClick={handleExportMarkdown}
+                >
+                  <span className="dropdown-item-icon">📄</span>
+                  <div>
+                    <span className="dropdown-item-title">Export as Markdown</span>
+                    <span className="dropdown-item-desc">Download standard .md file</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  className="dropdown-item"
+                  id="btn-export-pdf"
+                  onClick={handleExportPDF}
+                >
+                  <span className="dropdown-item-icon">📑</span>
+                  <div>
+                    <span className="dropdown-item-title">Export as PDF</span>
+                    <span className="dropdown-item-desc">Print or save as PDF document</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Comments Sidebar Toggle Button */}
           <button
