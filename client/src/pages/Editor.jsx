@@ -7,6 +7,7 @@ import ShareModal from '../components/ShareModal';
 import CommentsSidebar from '../components/CommentsSidebar';
 import PresenceBar from '../components/PresenceBar';
 import VersionHistoryDrawer from '../components/VersionHistoryDrawer';
+import VersionPreviewModal from '../components/VersionPreviewModal';
 import { downloadMarkdown } from '../utils/markdownExporter';
 import { usePresence } from '../hooks/usePresence';
 
@@ -26,6 +27,7 @@ export default function Editor() {
   const [showComments, setShowComments] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [previewVersion, setPreviewVersion] = useState(null);
+  const [versionRefreshKey, setVersionRefreshKey] = useState(0);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [openCommentsCount, setOpenCommentsCount] = useState(0);
   const [selectedText, setSelectedText] = useState('');
@@ -102,6 +104,7 @@ export default function Editor() {
         setSaveStatus('Saving...');
         await docs.update(id, { content: newContent });
         broadcastSaved();
+        setVersionRefreshKey((prev) => prev + 1);
         setSaveStatus(`Auto-saved at ${new Date().toLocaleTimeString()}`);
       } catch (err) {
         setSaveStatus('Auto-save failed');
@@ -143,12 +146,23 @@ export default function Editor() {
       }
       const res = await docs.update(id, payload);
       setDoc(res.data);
+      setVersionRefreshKey((prev) => prev + 1);
       broadcastSaved();
       setSaveStatus(`Saved at ${new Date().toLocaleTimeString()}`);
     } catch (err) {
       setSaveStatus('Save failed');
       setError('Failed to save document');
     }
+  };
+
+  // Preview a past version snapshot in a dedicated modal (keeping active editor draft completely untouched)
+  const handlePreviewVersion = (versionSnapshot) => {
+    setPreviewVersion(versionSnapshot);
+  };
+
+  // Exit preview modal
+  const handleExitPreview = () => {
+    setPreviewVersion(null);
   };
 
   // Restore past version snapshot
@@ -163,6 +177,7 @@ export default function Editor() {
       contentRef.current = res.data.content;
       setPreviewVersion(null);
       setShowVersionHistory(false);
+      setVersionRefreshKey((prev) => prev + 1);
       broadcastSaved();
       setSaveStatus(
         `Restored v#${versionSnapshot.version_number} at ${new Date().toLocaleTimeString()}`
@@ -442,45 +457,6 @@ export default function Editor() {
         </div>
       </header>
 
-      {/* Version Preview Banner */}
-      {previewVersion && (
-        <div className="version-preview-banner">
-          <div className="version-preview-info">
-            <span className="version-preview-tag">Previewing v{previewVersion.version_number}</span>
-            <span className="version-preview-desc">
-              <strong>{previewVersion.label || 'Snapshot'}</strong> • Created{' '}
-              {new Date(previewVersion.created_at).toLocaleString([], {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}{' '}
-              by {previewVersion.author_name} (Read-Only)
-            </span>
-          </div>
-          <div className="version-preview-actions">
-            {isEditable && (
-              <button
-                type="button"
-                id="btn-restore-version"
-                className="btn btn-primary btn-sm"
-                onClick={() => handleRestoreVersion(previewVersion)}
-              >
-                Restore this version
-              </button>
-            )}
-            <button
-              type="button"
-              id="btn-exit-preview"
-              className="btn btn-outline btn-sm"
-              onClick={() => setPreviewVersion(null)}
-            >
-              Exit Preview
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Mode Banner */}
       {userRole === 'commenter' && (
         <div className="mode-banner mode-banner-commenter">
@@ -505,9 +481,9 @@ export default function Editor() {
       <div className="editor-layout-wrap">
         <main className={`editor-main-area ${showComments || showVersionHistory ? 'with-sidebar' : ''}`}>
           <TipTapEditor
-            content={previewVersion ? previewVersion.content : content}
+            content={content}
             onChange={handleContentChange}
-            editable={!previewVersion && isEditable}
+            editable={isEditable}
             onSelectionChange={handleTextSelection}
           />
         </main>
@@ -528,16 +504,24 @@ export default function Editor() {
           <VersionHistoryDrawer
             docId={doc?.id}
             activePreviewId={previewVersion?.id}
-            onPreviewVersion={(snapshot) => setPreviewVersion(snapshot)}
-            onClose={() => {
-              setShowVersionHistory(false);
-              setPreviewVersion(null);
-            }}
+            refreshTrigger={versionRefreshKey}
+            onPreviewVersion={handlePreviewVersion}
+            onClose={() => setShowVersionHistory(false)}
             onRestore={handleRestoreVersion}
             canRestore={isEditable}
           />
         )}
       </div>
+
+      {/* Version Preview Modal */}
+      {previewVersion && (
+        <VersionPreviewModal
+          version={previewVersion}
+          canRestore={isEditable}
+          onRestore={handleRestoreVersion}
+          onClose={handleExitPreview}
+        />
+      )}
 
       {/* Share Modal */}
       {showShareModal && (

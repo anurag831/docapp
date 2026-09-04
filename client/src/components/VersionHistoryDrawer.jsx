@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { versions } from '../api';
 
 export default function VersionHistoryDrawer({
@@ -8,27 +8,29 @@ export default function VersionHistoryDrawer({
   onClose,
   onRestore,
   canRestore,
+  refreshTrigger,
 }) {
   const [versionList, setVersionList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingSnapshotId, setLoadingSnapshotId] = useState(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchVersions = async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const res = await versions.getAll(docId);
-        setVersionList(res.data);
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to load version history');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchVersions();
+  const fetchVersions = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await versions.getAll(docId);
+      setVersionList(res.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load version history');
+    } finally {
+      setLoading(false);
+    }
   }, [docId]);
+
+  useEffect(() => {
+    fetchVersions();
+  }, [fetchVersions, refreshTrigger]);
 
   const handleSelectVersion = async (v) => {
     try {
