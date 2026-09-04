@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const http = require('http');
 const { WebSocketServer, WebSocket } = require('ws');
 const authRoutes = require('./routes/auth');
@@ -16,11 +17,11 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 
-// In production, serve client/dist as static files and handle SPA fallback
-if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.resolve(__dirname, '../client/dist');
+// In production or when client/dist exists, serve static files and handle SPA fallback
+const clientDist = path.resolve(__dirname, '../client/dist');
+if (process.env.NODE_ENV === 'production' || fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
+  app.use((req, res) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
